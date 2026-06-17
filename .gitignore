@@ -1,0 +1,10 @@
+node_modules/
+venv/
+dist/
+.DS_Store
+.claude/
+*.pyc
+__pycache__/
+.env
+public/audio/
+data/sessions/
