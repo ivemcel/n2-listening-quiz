@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import useStore from '../store/useStore';
 import questionsData from '../../data/questions.json';
 import timestampsData from '../../data/timestamps.json';
+import { getSessionAudioSrc, toSessionRelativeTimestamp } from '../utils/sessionAudio';
+import { downloadWrongAudio } from '../utils/downloadAudio';
 
 function buildQuestionMap() {
   const map = {};
@@ -20,7 +22,8 @@ export default function ExportPage() {
 
   const [selected, setSelected] = useState(new Set());
   const [selectAll, setSelectAll] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+  const [downloadMsg, setDownloadMsg] = useState(null);
 
   // Group wrong questions by session
   const grouped = useMemo(() => {
@@ -56,40 +59,48 @@ export default function ExportPage() {
     setSelectAll(next.size === wrongBook.length);
   };
 
-  // Generate export data for the shell script
-  const generateExportCommand = () => {
+  const handleDownload = async () => {
+    if (selected.size === 0) return;
+
+    setDownloading(true);
+    setDownloadMsg('正在加载音频...');
+
+    // Build export entries with relative timestamps
     const ids = [...selected];
-    const entries = ids.map(id => {
+    const entries = [];
+    const sessionAudioMap = {};
+
+    for (const id of ids) {
       const entry = questionMap[id];
-      const ts = timestampsData[entry.sessionId]?.[entry.question.number];
-      return {
+      if (!entry) continue;
+
+      const sessionId = entry.sessionId;
+      const audioSrc = getSessionAudioSrc(sessionId);
+      if (audioSrc) {
+        sessionAudioMap[sessionId] = audioSrc;
+      }
+
+      const absTs = timestampsData[sessionId]?.[entry.question.number];
+      const relTs = toSessionRelativeTimestamp(sessionId, absTs);
+
+      entries.push({
         id,
-        sessionId: entry.sessionId,
+        sessionId,
         number: entry.question.number,
-        start: ts?.start ?? 0,
-        end: ts?.end ?? 0,
-      };
-    });
+        start: relTs?.start ?? 0,
+        end: relTs?.end ?? 0,
+      });
+    }
 
-    // Write export data to localStorage so the script can read it
-    const exportData = {
-      questionIds: ids,
-      entries,
-      exportedAt: new Date().toISOString(),
-    };
-    localStorage.setItem('n2-export-data', JSON.stringify(exportData));
-
-    return `node scripts/export-wrong-audio.mjs`;
-  };
-
-  const handleCopyCommand = async () => {
-    const cmd = generateExportCommand();
     try {
-      await navigator.clipboard.writeText(cmd);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      setCopied(false);
+      setDownloadMsg('正在裁剪音频片段...');
+      const count = await downloadWrongAudio(entries, sessionAudioMap);
+      setDownloadMsg(`✅ 已下载 ${count} 道错题的音频合集！`);
+      setTimeout(() => setDownloadMsg(null), 3000);
+    } catch (err) {
+      setDownloadMsg(`❌ 导出失败: ${err.message}`);
+    } finally {
+      setDownloading(false);
     }
   };
 
@@ -111,20 +122,10 @@ export default function ExportPage() {
     <div className="space-y-4">
       <h2 className="text-xl font-bold text-gray-800">💾 导出错题音频</h2>
 
-      {/* Info */}
-      <div className="card bg-blue-50 border-blue-200 space-y-2">
-        <p className="text-sm text-blue-800">
-          📌 导出需要用到 ffmpeg。请确保已安装 ffmpeg。
-        </p>
-        <p className="text-sm text-blue-700">
-          选择要导出的错题，然后在终端运行导出命令。
-        </p>
-      </div>
-
       {!hasTimestamps && (
         <div className="card bg-yellow-50 border-yellow-200">
           <p className="text-sm text-yellow-800">
-            ⚠️ 尚未配置音频时间戳。请先运行 timestamp-helper 标记时间点，否则导出的音频将为空。
+            ⚠️ 尚未配置音频时间戳，导出的音频可能为空。请先运行 timestamp-helper 标记时间点。
           </p>
         </div>
       )}
@@ -154,6 +155,7 @@ export default function ExportPage() {
             <div className="space-y-1">
               {group.items.map(({ id, q }) => {
                 const hasTs = !!timestampsData[sessionId]?.[q.number];
+                const hasAudio = !!getSessionAudioSrc(sessionId);
                 return (
                   <label
                     key={id}
@@ -172,6 +174,9 @@ export default function ExportPage() {
                     {!hasTs && (
                       <span className="text-xs text-orange-500 shrink-0">无时间戳</span>
                     )}
+                    {!hasAudio && (
+                      <span className="text-xs text-red-500 shrink-0">无音频</span>
+                    )}
                   </label>
                 );
               })}
@@ -180,25 +185,36 @@ export default function ExportPage() {
         ))}
       </div>
 
-      {/* Export action */}
+      {/* Download button */}
       <div className="card space-y-3">
         <p className="text-sm text-gray-600">
           已选择 <span className="font-bold text-primary-600">{selected.size}</span> 道错题
         </p>
-        <p className="text-xs text-gray-500">
-          在终端中运行以下命令导出音频：
-        </p>
-        <div className="bg-gray-900 text-green-400 p-3 rounded-lg text-sm font-mono break-all">
-          $ {generateExportCommand()}
-        </div>
         <button
-          onClick={handleCopyCommand}
-          className="btn-secondary text-sm"
+          onClick={handleDownload}
+          disabled={downloading || selected.size === 0}
+          className={`w-full py-3 rounded-xl font-bold text-white transition-colors ${
+            downloading || selected.size === 0
+              ? 'bg-gray-300 cursor-not-allowed'
+              : 'bg-primary-600 hover:bg-primary-700'
+          }`}
         >
-          {copied ? '✅ 已复制' : '📋 复制命令'}
+          {downloading ? (
+            <span className="flex items-center justify-center gap-2">
+              <span className="animate-spin">⏳</span>
+              {downloadMsg || '处理中...'}
+            </span>
+          ) : (
+            '⬇️ 下载错题音频合集'
+          )}
         </button>
-        <p className="text-xs text-gray-400">
-          导出文件将保存为 data/错题合集.mp3
+        {downloadMsg && !downloading && (
+          <p className={`text-sm text-center ${downloadMsg.startsWith('✅') ? 'text-green-600' : 'text-red-600'}`}>
+            {downloadMsg}
+          </p>
+        )}
+        <p className="text-xs text-gray-400 text-center">
+          浏览器将自动裁剪并拼接选中错题的音频片段，下载为 WAV 文件
         </p>
       </div>
     </div>

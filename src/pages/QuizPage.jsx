@@ -154,7 +154,7 @@ export default function QuizPage() {
           audioSrc={sessionAudioSrc}
           startTime={audioStart}
           endTime={audioEnd}
-          autoPlay={!showResult}
+          autoPlay={false}
         />
       )}
       {!hasAudio && (
@@ -175,7 +175,7 @@ export default function QuizPage() {
         )}
       </div>
 
-      <QuestionCard dialogue={q.dialogue} grammar={q.grammar} />
+      <QuestionCard dialogue={q.dialogue} grammar={q.grammar} showResult={showResult} />
 
       <OptionList
         options={q.options}

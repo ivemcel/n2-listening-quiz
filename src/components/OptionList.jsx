@@ -1,7 +1,22 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 export default function OptionList({ options, selectedLabel, onSelect, disabled, showResult }) {
+  const [showJapanese, setShowJapanese] = useState({});
   const [showChinese, setShowChinese] = useState({});
+
+  // 答完后自动显示所有选项的日文和翻译
+  useEffect(() => {
+    if (showResult) {
+      const all = {};
+      options.forEach(opt => { all[opt.label] = true; });
+      setShowJapanese(all);
+      setShowChinese(all);
+    }
+  }, [showResult, options]);
+
+  const toggleJapanese = (label) => {
+    setShowJapanese(prev => ({ ...prev, [label]: !prev[label] }));
+  };
 
   const toggleChinese = (label) => {
     setShowChinese(prev => ({ ...prev, [label]: !prev[label] }));
@@ -9,7 +24,21 @@ export default function OptionList({ options, selectedLabel, onSelect, disabled,
 
   return (
     <div className="space-y-3">
-      <div className="text-sm text-gray-500 font-medium">选择回答：</div>
+      <div className="flex items-center justify-between">
+        <span className="text-sm text-gray-500 font-medium">选择回答：</span>
+        {!showResult && (
+          <button
+            onClick={() => {
+              const all = {};
+              options.forEach(opt => { all[opt.label] = true; });
+              setShowJapanese(all);
+            }}
+            className="text-xs text-primary-600 hover:underline"
+          >
+            👁 显示全部选项文字
+          </button>
+        )}
+      </div>
       {options.map((opt) => {
         let borderClass = 'border-gray-200 hover:border-primary-400 hover:bg-primary-50';
         if (showResult) {
@@ -44,10 +73,19 @@ export default function OptionList({ options, selectedLabel, onSelect, disabled,
                 {showResult && opt.isCorrect ? '✓' : opt.label}
               </span>
               <div className="flex-1 min-w-0">
-                <p className="text-base leading-relaxed text-gray-800">
-                  {opt.japanese}
-                </p>
-                {opt.chinese && (
+                {showJapanese[opt.label] ? (
+                  <p className="text-base leading-relaxed text-gray-800">
+                    {opt.japanese}
+                  </p>
+                ) : (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); toggleJapanese(opt.label); }}
+                    className="text-xs text-primary-600 hover:underline"
+                  >
+                    👁 显示选项 {opt.label}
+                  </button>
+                )}
+                {opt.chinese && showJapanese[opt.label] && (
                   <div>
                     <button
                       onClick={(e) => { e.stopPropagation(); toggleChinese(opt.label); }}
