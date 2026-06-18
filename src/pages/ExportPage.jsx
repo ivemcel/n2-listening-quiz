@@ -4,7 +4,7 @@ import useStore from '../store/useStore';
 import questionsData from '../../data/questions.json';
 import timestampsData from '../../data/timestamps.json';
 import { getSessionAudioSrc, toSessionRelativeTimestamp } from '../utils/sessionAudio';
-import { downloadWrongAudio } from '../utils/downloadAudio';
+import { downloadWrongAudio, downloadWrongQuestionText } from '../utils/downloadAudio';
 
 function buildQuestionMap() {
   const map = {};
@@ -86,16 +86,20 @@ export default function ExportPage() {
       entries.push({
         id,
         sessionId,
+        year: entry.year,
+        month: entry.month,
         number: entry.question.number,
         start: relTs?.start ?? 0,
         end: relTs?.end ?? 0,
+        question: entry.question,
       });
     }
 
     try {
       setDownloadMsg('正在裁剪音频片段...');
       const count = await downloadWrongAudio(entries, sessionAudioMap);
-      setDownloadMsg(`✅ 已下载 ${count} 道错题的音频合集！`);
+      downloadWrongQuestionText(entries);
+      setDownloadMsg(`✅ 已下载 ${count} 道错题的音频合集和题目文本！`);
       setTimeout(() => setDownloadMsg(null), 3000);
     } catch (err) {
       setDownloadMsg(`❌ 导出失败: ${err.message}`);
@@ -205,7 +209,7 @@ export default function ExportPage() {
               {downloadMsg || '处理中...'}
             </span>
           ) : (
-            '⬇️ 下载错题音频合集'
+            '⬇️ 下载错题音频和题目文本'
           )}
         </button>
         {downloadMsg && !downloading && (
@@ -214,7 +218,7 @@ export default function ExportPage() {
           </p>
         )}
         <p className="text-xs text-gray-400 text-center">
-          浏览器将自动裁剪并拼接选中错题的音频片段，下载为 WAV 文件
+          浏览器将下载 WAV 音频合集，并同时导出对应题目和选项文本
         </p>
       </div>
     </div>

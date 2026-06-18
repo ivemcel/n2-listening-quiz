@@ -29,6 +29,10 @@ const OUT_DIR = path.join(ROOT, 'data', 'exports');
 const OUT_AUDIO = path.join(ROOT, 'data', '错题合集.mp3');
 const SEGMENTS_DIR = path.join(OUT_DIR, 'segments');
 
+function stripFurigana(text = '') {
+  return text.replace(/[（(][^)）]*[)）]/g, '');
+}
+
 // Check ffmpeg availability
 function checkFfmpeg() {
   try {
@@ -93,10 +97,59 @@ function buildQuestionLookup(questions) {
   const lookup = {};
   for (const [sessionId, session] of Object.entries(questions)) {
     for (const q of session.questions) {
-      lookup[q.id] = { sessionId, number: q.number };
+      lookup[q.id] = {
+        sessionId,
+        year: session.year,
+        month: session.month,
+        number: q.number,
+        question: q,
+      };
     }
   }
   return lookup;
+}
+
+function formatQuestionText(seg, index) {
+  const question = seg.question;
+  const correct = question.options.find(opt => opt.isCorrect);
+  const lines = [
+    `${index + 1}. ${seg.id}`,
+    `场次: ${seg.year}.${seg.month} (${seg.sessionId})`,
+    `题号: 第${seg.number}题`,
+    '',
+    `题目原文: ${question.dialogue.speaker ? `${question.dialogue.speaker}: ` : ''}${stripFurigana(question.dialogue.japanese)}`,
+  ];
+
+  if (question.dialogue.japanese !== stripFurigana(question.dialogue.japanese)) {
+    lines.push(`题目原文（含假名）: ${question.dialogue.japanese}`);
+  }
+
+  if (question.dialogue.chinese) {
+    lines.push(`题目翻译: ${question.dialogue.chinese}`);
+  }
+
+  lines.push('', '选项:');
+  question.options.forEach(opt => {
+    const marker = opt.isCorrect ? ' [正确]' : '';
+    lines.push(`${opt.label}. ${stripFurigana(opt.japanese)}${marker}`);
+    if (opt.japanese !== stripFurigana(opt.japanese)) {
+      lines.push(`   含假名: ${opt.japanese}`);
+    }
+    if (opt.chinese) {
+      lines.push(`   翻译: ${opt.chinese}`);
+    }
+  });
+
+  if (correct) {
+    lines.push('', `正确答案: ${correct.label}`);
+  }
+
+  if (question.grammar?.length) {
+    lines.push('', '语法点:');
+    question.grammar.forEach(item => lines.push(`- ${item}`));
+  }
+
+  return lines.join('\n');
 }
 
 // Main export function
@@ -141,7 +194,10 @@ async function main() {
     segments.push({
       id,
       sessionId: info.sessionId,
+      year: info.year,
+      month: info.month,
       number: info.number,
+      question: info.question,
       start: ts.start,
       end: ts.end,
     });
@@ -228,7 +284,11 @@ async function main() {
   }).join('\n');
 
   const summaryPath = path.join(ROOT, 'data', '错题导出记录.txt');
-  fs.writeFileSync(summaryPath, `错题音频导出记录\n导出时间: ${new Date().toISOString()}\n共 ${segments.length} 题\n\n${summary}`);
+  const questionText = segments.map(formatQuestionText).join('\n\n------------------------------\n\n');
+  fs.writeFileSync(
+    summaryPath,
+    `错题音频导出记录\n导出时间: ${new Date().toISOString()}\n共 ${segments.length} 题\n\n音频片段:\n${summary}\n\n==============================\n\n错题题目和选项\n\n${questionText}\n`
+  );
   console.log(`📝 导出记录: ${summaryPath}`);
 
   // Cleanup

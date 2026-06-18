@@ -80,6 +80,24 @@ const useStore = create(
       resetAll: () => {
         set({ answers: {}, wrongBook: [] });
       },
+
+      // Import data from backup (merges with existing)
+      importData: (answers, wrongBook) => {
+        set(state => ({
+          answers: { ...state.answers, ...answers },
+          wrongBook: [...new Set([...state.wrongBook, ...wrongBook])],
+        }));
+      },
+
+      // Export all data for backup
+      exportData: () => {
+        const state = get();
+        return {
+          answers: state.answers,
+          wrongBook: state.wrongBook,
+          exportedAt: new Date().toISOString(),
+        };
+      },
     }),
     {
       name: 'n2-listening-store',

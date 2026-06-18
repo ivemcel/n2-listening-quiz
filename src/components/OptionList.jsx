@@ -4,15 +4,11 @@ export default function OptionList({ options, selectedLabel, onSelect, disabled,
   const [showJapanese, setShowJapanese] = useState({});
   const [showChinese, setShowChinese] = useState({});
 
-  // 答完后自动显示所有选项的日文和翻译
+  // 切换题目时重置为全部隐藏
   useEffect(() => {
-    if (showResult) {
-      const all = {};
-      options.forEach(opt => { all[opt.label] = true; });
-      setShowJapanese(all);
-      setShowChinese(all);
-    }
-  }, [showResult, options]);
+    setShowJapanese({});
+    setShowChinese({});
+  }, [options]);
 
   const toggleJapanese = (label) => {
     setShowJapanese(prev => ({ ...prev, [label]: !prev[label] }));
@@ -26,18 +22,17 @@ export default function OptionList({ options, selectedLabel, onSelect, disabled,
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <span className="text-sm text-gray-500 font-medium">选择回答：</span>
-        {!showResult && (
-          <button
-            onClick={() => {
-              const all = {};
-              options.forEach(opt => { all[opt.label] = true; });
-              setShowJapanese(all);
-            }}
-            className="text-xs text-primary-600 hover:underline"
-          >
-            👁 显示全部选项文字
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={() => {
+            const all = {};
+            options.forEach(opt => { all[opt.label] = true; });
+            setShowJapanese(all);
+          }}
+          className="text-xs text-primary-600 hover:underline"
+        >
+          👁 显示全部选项文字
+        </button>
       </div>
       {options.map((opt) => {
         let borderClass = 'border-gray-200 hover:border-primary-400 hover:bg-primary-50';
@@ -52,11 +47,20 @@ export default function OptionList({ options, selectedLabel, onSelect, disabled,
         }
 
         return (
-          <button
+          <div
             key={opt.label}
             onClick={() => !disabled && onSelect(opt.label)}
-            disabled={disabled}
-            className={`w-full text-left p-4 rounded-xl border-2 transition-all duration-150 ${borderClass}`}
+            onKeyDown={(e) => {
+              if (!disabled && (e.key === 'Enter' || e.key === ' ')) {
+                e.preventDefault();
+                onSelect(opt.label);
+              }
+            }}
+            role={disabled ? undefined : 'button'}
+            tabIndex={disabled ? -1 : 0}
+            className={`w-full text-left p-4 rounded-xl border-2 transition-all duration-150 ${borderClass} ${
+              disabled ? '' : 'cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary-200'
+            }`}
           >
             <div className="flex items-start gap-3">
               <span
@@ -79,6 +83,7 @@ export default function OptionList({ options, selectedLabel, onSelect, disabled,
                   </p>
                 ) : (
                   <button
+                    type="button"
                     onClick={(e) => { e.stopPropagation(); toggleJapanese(opt.label); }}
                     className="text-xs text-primary-600 hover:underline"
                   >
@@ -88,6 +93,7 @@ export default function OptionList({ options, selectedLabel, onSelect, disabled,
                 {opt.chinese && showJapanese[opt.label] && (
                   <div>
                     <button
+                      type="button"
                       onClick={(e) => { e.stopPropagation(); toggleChinese(opt.label); }}
                       className="text-xs text-primary-600 hover:underline mt-1"
                     >
@@ -106,7 +112,7 @@ export default function OptionList({ options, selectedLabel, onSelect, disabled,
                 <span className="text-red-600 text-lg shrink-0">❌</span>
               )}
             </div>
-          </button>
+          </div>
         );
       })}
     </div>

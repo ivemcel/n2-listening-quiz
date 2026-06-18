@@ -1,17 +1,10 @@
 import { useState, useEffect } from 'react';
 
-export default function QuestionCard({ dialogue, grammar, showResult }) {
+export default function QuestionCard({ dialogue, grammar }) {
   const [showDialogue, setShowDialogue] = useState(false);
   const [showFurigana, setShowFurigana] = useState(false);
   const [showChinese, setShowChinese] = useState(false);
   const [showGrammar, setShowGrammar] = useState(false);
-
-  // 答完后自动显示对话文本
-  useEffect(() => {
-    if (showResult) {
-      setShowDialogue(true);
-    }
-  }, [showResult]);
 
   // 切换题目时重置隐藏状态
   useEffect(() => {

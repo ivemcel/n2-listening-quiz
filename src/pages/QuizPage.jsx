@@ -175,9 +175,10 @@ export default function QuizPage() {
         )}
       </div>
 
-      <QuestionCard dialogue={q.dialogue} grammar={q.grammar} showResult={showResult} />
+      <QuestionCard dialogue={q.dialogue} grammar={q.grammar} />
 
       <OptionList
+        key={currentIndex}
         options={q.options}
         selectedLabel={selectedLabel}
         onSelect={handleSelect}

@@ -20,6 +20,7 @@ export default function AudioPlayer({ audioSrc, startTime = 0, endTime, autoPlay
     const audio = audioRef.current;
     if (!audio) return;
 
+    audio.pause();
     setError(null);
     setIsPlaying(false);
     setCurrentTime(startTime);

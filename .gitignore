@@ -8,3 +8,6 @@ __pycache__/
 .env
 public/audio/
 data/sessions/
+data/错题合集.mp3
+data/错题导出记录.txt
+data/exports/
