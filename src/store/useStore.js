@@ -193,32 +193,6 @@ const useStore = create((set, get) => ({
     }
   },
 
-  // ─── Import / Export ─────────────────────────────────────
-
-  exportData: () => {
-    const state = get();
-    return {
-      answers: state.answers,
-      wrongBook: state.wrongBook,
-      exportedAt: new Date().toISOString(),
-    };
-  },
-
-  importData: async (answers, wrongBook) => {
-    set(state => ({
-      answers: { ...state.answers, ...answers },
-      wrongBook: [...new Set([...state.wrongBook, ...wrongBook])],
-    }));
-
-    // Save each imported session
-    try {
-      for (const sessionCode of Object.keys(answers)) {
-        await get().saveSessionProgress(sessionCode);
-      }
-    } catch (err) {
-      console.error('Import error:', err.message);
-    }
-  },
 }));
 
 export default useStore;
