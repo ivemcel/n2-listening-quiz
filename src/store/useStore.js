@@ -18,17 +18,22 @@ const useStore = create((set, get) => ({
     }
 
     try {
-      // Fetch answer records (no expand - PB expand is unreliable)
+      const prevAnswers = get().answers;
+      console.log('📥 loadUserData 开始… 当前store:', JSON.stringify(prevAnswers).slice(0, 200));
+
+      // Fetch answer records
       const records = await pb.collection('answer_records').getFullList({
         requestKey: null,
       });
+      console.log(`📥 PB返回 ${records.length} 条答题记录:`, records.map(r => `${r.id.slice(-6)}→${r.question.slice(-6)} label=${r.selected_label}`));
 
-      // Build reverse lookup: PB question ID → code
+      // Build answers from records
       const answers = {};
       for (const r of records) {
         const qCode = await getQuestionCode(r.question);
+        console.log(`  🔍 PB id=${r.question.slice(-6)} → code=${qCode || '❌未找到'}`);
         if (!qCode) {
-          console.warn('Unknown question PB ID:', r.question, 'record:', r.id);
+          console.warn('❌ 未知题目ID:', r.question, 'record:', r.id);
           continue;
         }
         const parts = qCode.split('-');
@@ -38,18 +43,18 @@ const useStore = create((set, get) => ({
         answers[sessionCode][qNum] = r.selected_label;
       }
 
-      // Fetch wrong book (also no expand)
+      // Fetch wrong book
       const wrongRecords = await pb.collection('wrong_book').getFullList({
         requestKey: null,
       });
-
       const wrongBook = [];
       for (const r of wrongRecords) {
         const qCode = await getQuestionCode(r.question);
         if (qCode) wrongBook.push(qCode);
       }
 
-      console.log(`📥 加载完成: ${records.length}条答题, ${wrongBook.length}道错题, ${Object.keys(answers).length}个场次`);
+      console.log(`📥 加载完成 → 写入store: ${JSON.stringify(answers).slice(0, 300)}`);
+      console.log(`📥 场次数: ${Object.keys(answers).length}, 错题: ${wrongBook.length}`);
       set({ answers, wrongBook, loaded: true, loadError: null });
     } catch (err) {
       const msg = err.message || String(err);
