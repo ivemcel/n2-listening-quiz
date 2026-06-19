@@ -24,6 +24,7 @@ export default function App() {
   const { user, loading } = useAuth();
   const loadUserData = useStore(s => s.loadUserData);
   const loaded = useStore(s => s.loaded);
+  const loadError = useStore(s => s.loadError);
 
   // Load user's answer records whenever auth state is confirmed
   useEffect(() => {
@@ -53,6 +54,18 @@ export default function App() {
 
   return (
     <div className="max-w-4xl mx-auto px-4 pb-24 pt-6">
+      {loadError && (
+        <div className="mb-4 bg-red-50 border border-red-300 rounded-xl px-4 py-3 text-sm text-red-700">
+          ❌ 数据加载失败：{loadError}
+          <button
+            onClick={() => loadUserData()}
+            className="ml-3 underline hover:text-red-900"
+          >
+            重试
+          </button>
+        </div>
+      )}
+
       <header className="text-center mb-8 relative">
         <h1 className="text-3xl font-bold text-primary-700">
           🎧 N2听力即时问答

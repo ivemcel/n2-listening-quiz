@@ -26,6 +26,7 @@ export default function QuizPage() {
   const [pageReady, setPageReady] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState(null);
 
   const session = questionsData[sessionId];
   const questions = session?.questions || [];
@@ -93,13 +94,20 @@ export default function QuizPage() {
     setShowResult(true);
     setSaving(true);
     setSaved(false);
+    setSaveError(null);
 
     const q = questions[currentIndex];
     const option = q.options.find(o => o.label === label);
-    await recordAnswer(q.id, sessionId, q.number, label, option?.isCorrect === true);
-
-    setSaving(false);
-    setSaved(true);
+    try {
+      await recordAnswer(q.id, sessionId, q.number, label, option?.isCorrect === true);
+      setSaved(true);
+      setSaveError(null);
+    } catch (err) {
+      setSaveError(err.message || '保存失败');
+      setSaved(false);
+    } finally {
+      setSaving(false);
+    }
   }, [showResult, currentIndex, questions, sessionId, recordAnswer]);
 
   const handleNext = useCallback(() => {
@@ -296,8 +304,10 @@ export default function QuizPage() {
           {q.options.find(o => o.label === selectedLabel)?.isCorrect
             ? '太棒了！继续加油！'
             : '已自动加入错题本，多加练习！'}
-          <div className="mt-1 text-xs text-gray-400">
-            {saving ? '💾 保存中…' : saved ? '✅ 已保存' : ''}
+          <div className="mt-1 text-xs">
+            {saving && <span className="text-gray-400">💾 保存中…</span>}
+            {saved && !saveError && <span className="text-green-500">✅ 已保存</span>}
+            {saveError && <span className="text-red-500">❌ {saveError}</span>}
           </div>
         </div>
       )}

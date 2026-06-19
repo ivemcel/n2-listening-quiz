@@ -7,6 +7,7 @@ const useStore = create((set, get) => ({
   answers: {},       // { sessionCode: { questionNumber: selectedLabel } }
   wrongBook: [],     // array of question codes
   loaded: false,     // true after data synced from PocketBase
+  loadError: null,   // error message if loading failed
 
   // ─── Load user data from PocketBase ───────────────────────
 
@@ -17,7 +18,6 @@ const useStore = create((set, get) => ({
     }
 
     try {
-      // Fetch answer records (with expanded question for code)
       const records = await pb.collection('answer_records').getFullList({
         expand: 'question',
         requestKey: null,
@@ -26,7 +26,10 @@ const useStore = create((set, get) => ({
       const answers = {};
       for (const r of records) {
         const qCode = r.expand?.question?.code;
-        if (!qCode) continue;
+        if (!qCode) {
+          console.warn('Answer record missing question code:', r.id);
+          continue;
+        }
         const parts = qCode.split('-');
         const sessionCode = parts[0]; // "201607" from "201607-1"
         const qNum = parseInt(parts[parts.length - 1], 10);
@@ -34,7 +37,6 @@ const useStore = create((set, get) => ({
         answers[sessionCode][qNum] = r.selected_label;
       }
 
-      // Fetch wrong book
       const wrongRecords = await pb.collection('wrong_book').getFullList({
         expand: 'question',
         requestKey: null,
@@ -44,10 +46,12 @@ const useStore = create((set, get) => ({
         .map(r => r.expand?.question?.code)
         .filter(Boolean);
 
-      set({ answers, wrongBook, loaded: true });
+      console.log(`📥 加载完成: ${records.length}条答题, ${wrongBook.length}道错题, ${Object.keys(answers).length}个场次`);
+      set({ answers, wrongBook, loaded: true, loadError: null });
     } catch (err) {
-      console.error('Failed to load user data:', err.message);
-      set({ loaded: true });
+      const msg = err.message || String(err);
+      console.error('❌ 加载答题数据失败:', msg);
+      set({ loaded: true, loadError: msg });
     }
   },
 
@@ -122,7 +126,9 @@ const useStore = create((set, get) => ({
         }
       }
     } catch (err) {
-      console.error('Failed to save answer:', err.message);
+      const msg = err.message || String(err);
+      console.error('❌ 保存答案失败:', questionCode, msg);
+      throw err; // Re-throw so UI can show error
     }
   },
 
