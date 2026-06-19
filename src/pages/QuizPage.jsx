@@ -24,6 +24,8 @@ export default function QuizPage() {
   const [sessionDone, setSessionDone] = useState(false);
   const [showRestartDialog, setShowRestartDialog] = useState(false);
   const [pageReady, setPageReady] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
 
   const session = questionsData[sessionId];
   const questions = session?.questions || [];
@@ -85,14 +87,19 @@ export default function QuizPage() {
     }
   }, [currentIndex]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handleSelect = useCallback((label) => {
+  const handleSelect = useCallback(async (label) => {
     if (showResult) return;
     setSelectedLabel(label);
     setShowResult(true);
+    setSaving(true);
+    setSaved(false);
 
     const q = questions[currentIndex];
     const option = q.options.find(o => o.label === label);
-    recordAnswer(q.id, sessionId, q.number, label, option?.isCorrect === true);
+    await recordAnswer(q.id, sessionId, q.number, label, option?.isCorrect === true);
+
+    setSaving(false);
+    setSaved(true);
   }, [showResult, currentIndex, questions, sessionId, recordAnswer]);
 
   const handleNext = useCallback(() => {
@@ -289,6 +296,9 @@ export default function QuizPage() {
           {q.options.find(o => o.label === selectedLabel)?.isCorrect
             ? '太棒了！继续加油！'
             : '已自动加入错题本，多加练习！'}
+          <div className="mt-1 text-xs text-gray-400">
+            {saving ? '💾 保存中…' : saved ? '✅ 已保存' : ''}
+          </div>
         </div>
       )}
 
