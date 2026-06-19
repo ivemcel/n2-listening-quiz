@@ -8,9 +8,12 @@
     "build": "vite build",
     "preview": "vite preview",
     "parse": "node scripts/parse.js",
-    "export-audio": "node scripts/export-wrong-audio.mjs"
+    "export-audio": "node scripts/export-wrong-audio.mjs",
+    "db:import": "node scripts/import-to-supabase.mjs",
+    "db:migrate": "echo 'Run migration SQL in Supabase Dashboard → SQL Editor'"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.108.2",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.26.0",
