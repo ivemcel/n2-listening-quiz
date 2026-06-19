@@ -28,7 +28,7 @@ const useStore = create((set, get) => ({
         const qCode = r.expand?.question?.code;
         if (!qCode) continue;
         const parts = qCode.split('-');
-        const sessionCode = parts.slice(0, 2).join('-'); // "201607"
+        const sessionCode = parts[0]; // "201607" from "201607-1"
         const qNum = parseInt(parts[parts.length - 1], 10);
         if (!answers[sessionCode]) answers[sessionCode] = {};
         answers[sessionCode][qNum] = r.selected_label;
