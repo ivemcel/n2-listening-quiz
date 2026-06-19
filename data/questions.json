@@ -1011,8 +1011,8 @@
           },
           {
             "label": "2",
-            "japanese": "消（け）しちゃいけなかった？不该关吗？（误解）",
-            "chinese": "",
+            "japanese": "消（け）しちゃいけなかった？",
+            "chinese": "不该关吗？（误解）",
             "isCorrect": false
           },
           {
@@ -1037,14 +1037,14 @@
         "options": [
           {
             "label": "1",
-            "japanese": "嫌（いや）なことでもあったんじゃない？是不是有什么不愉快的事？（与“心情好”相反。",
-            "chinese": "误）",
+            "japanese": "嫌（いや）なことでもあったんじゃない？",
+            "chinese": "是不是有什么不愉快的事？（与“心情好”相反，误）",
             "isCorrect": false
           },
           {
             "label": "2",
             "japanese": "なんかいいことあったのかな？是不是有什么好事呢？",
-            "chinese": "",
+            "chinese": "是不是有什么好事呢？",
             "isCorrect": true
           },
           {
