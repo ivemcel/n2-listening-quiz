@@ -81,14 +81,14 @@ const useStore = create((set, get) => ({
         return;
       }
 
-      // Find existing record for this user+question
-      const existing = await pb.collection('answer_records').getFirstListItem(
-        `question="${questionPbId}"`,
-        { requestKey: null }
-      );
+      // Find existing record (use getList — getFirstListItem throws on 404!)
+      const existingList = await pb.collection('answer_records').getList(1, 1, {
+        filter: `question="${questionPbId}"`,
+        requestKey: null,
+      });
 
-      if (existing) {
-        await pb.collection('answer_records').update(existing.id, {
+      if (existingList.items.length > 0) {
+        await pb.collection('answer_records').update(existingList.items[0].id, {
           selected_label: selectedLabel,
           is_correct: isCorrect,
         });
@@ -104,7 +104,6 @@ const useStore = create((set, get) => ({
 
       // Manage wrong book
       if (!isCorrect) {
-        // Upsert: try to add if not exists
         try {
           await pb.collection('wrong_book').create({
             user: pb.authStore.model.id,
@@ -114,15 +113,12 @@ const useStore = create((set, get) => ({
           // Already exists — ok
         }
       } else {
-        // Remove from wrong book if exists
-        try {
-          const wbRecord = await pb.collection('wrong_book').getFirstListItem(
-            `question="${questionPbId}"`,
-            { requestKey: null }
-          );
-          await pb.collection('wrong_book').delete(wbRecord.id);
-        } catch {
-          // Not in wrong book — ok
+        const wbList = await pb.collection('wrong_book').getList(1, 1, {
+          filter: `question="${questionPbId}"`,
+          requestKey: null,
+        });
+        if (wbList.items.length > 0) {
+          await pb.collection('wrong_book').delete(wbList.items[0].id);
         }
       }
     } catch (err) {
@@ -140,11 +136,13 @@ const useStore = create((set, get) => ({
     try {
       const questionPbId = await getQuestionPbId(questionCode);
       if (!questionPbId) return;
-      const existing = await pb.collection('wrong_book').getFirstListItem(
-        `question="${questionPbId}"`,
-        { requestKey: null }
-      );
-      await pb.collection('wrong_book').delete(existing.id);
+      const wbList = await pb.collection('wrong_book').getList(1, 1, {
+        filter: `question="${questionPbId}"`,
+        requestKey: null,
+      });
+      if (wbList.items.length > 0) {
+        await pb.collection('wrong_book').delete(wbList.items[0].id);
+      }
     } catch (err) {
       console.error('Failed to remove from wrong book:', err.message);
     }
