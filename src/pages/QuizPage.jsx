@@ -16,17 +16,25 @@ export default function QuizPage() {
   const getAnswer = useStore(s => s.getAnswer);
   const getSessionStats = useStore(s => s.getSessionStats);
   const clearSession = useStore(s => s.clearSession);
+  const loadUserData = useStore(s => s.loadUserData);
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedLabel, setSelectedLabel] = useState(null);
   const [showResult, setShowResult] = useState(false);
   const [sessionDone, setSessionDone] = useState(false);
   const [showRestartDialog, setShowRestartDialog] = useState(false);
+  const [pageReady, setPageReady] = useState(false);
 
   const session = questionsData[sessionId];
   const questions = session?.questions || [];
   const timestamps = timestampsData[sessionId] || {};
   const sessionAudioSrc = getSessionAudioSrc(sessionId);
+
+  // Refresh data from PocketBase when entering a quiz session
+  useEffect(() => {
+    setPageReady(false);
+    loadUserData().then(() => setPageReady(true));
+  }, [sessionId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     setCurrentIndex(0);
@@ -100,6 +108,16 @@ export default function QuizPage() {
       setCurrentIndex(i => i - 1);
     }
   }, [currentIndex]);
+
+  // Loading state while syncing from PocketBase
+  if (!pageReady) {
+    return (
+      <div className="text-center py-12 text-gray-400">
+        <div className="text-4xl mb-2 animate-pulse">🔄</div>
+        <p>同步答题数据…</p>
+      </div>
+    );
+  }
 
   // Session not found
   if (!session) {
