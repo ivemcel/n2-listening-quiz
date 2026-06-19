@@ -1,14 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import YearSelector from '../components/YearSelector';
 import useStore from '../store/useStore';
-import { useAuth } from '../lib/auth';
 import questionsData from '../../data/questions.json';
 
 export default function HomePage() {
-  const { user } = useAuth();
   const getSessionStats = useStore(s => s.getSessionStats);
-  const loadUserData = useStore(s => s.loadUserData);
-  const loaded = useStore(s => s.loaded);
   const resetAll = useStore(s => s.resetAll);
   const exportData = useStore(s => s.exportData);
   const importData = useStore(s => s.importData);
@@ -24,13 +20,6 @@ export default function HomePage() {
       setLoadError('题目数据加载失败，请先运行: node scripts/parse.js');
     }
   }, []);
-
-  // Load user data from Supabase when user changes
-  useEffect(() => {
-    if (user) {
-      loadUserData(user.id);
-    }
-  }, [user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleExport = () => {
     try {
@@ -110,7 +99,7 @@ export default function HomePage() {
     );
   }
 
-  if (!sessions || !loaded) {
+  if (!sessions) {
     return <div className="text-center py-12 text-gray-400">加载中…</div>;
   }
 
