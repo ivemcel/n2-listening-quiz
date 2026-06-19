@@ -1,17 +1,34 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { tryRecover, writeBackup } from '../utils/dataBackup';
+
+// ─── Pre-initialization recovery ────────────────────────────
+// If primary localStorage was wiped, restore from backup/snapshot
+// BEFORE zustand's persist middleware reads from it.
+
+let recoveredFrom = null;
+try {
+  const result = tryRecover();
+  if (result.recovered) {
+    recoveredFrom = result.source;
+  }
+} catch {
+  // localStorage unavailable — app will work in-memory
+}
+
+// ─── Store ──────────────────────────────────────────────────
 
 const useStore = create(
   persist(
     (set, get) => ({
       // user answers: { sessionId: { questionNumber: selectedOptionLabel } }
-      // selectedOptionLabel is "1", "2", or "3"
       answers: {},
 
       // wrong book: array of question IDs
       wrongBook: [],
 
-      // Record an answer. Returns true if correct.
+      // ─── Record an answer ───────────────────────────────
+
       recordAnswer: (questionId, sessionId, questionNumber, selectedLabel, isCorrect) => {
         set(state => {
           const newAnswers = { ...state.answers };
@@ -24,7 +41,6 @@ const useStore = create(
           if (!isCorrect && !newWrongBook.includes(questionId)) {
             newWrongBook.push(questionId);
           } else if (isCorrect && newWrongBook.includes(questionId)) {
-            // Remove from wrong book if answered correctly this time
             const idx = newWrongBook.indexOf(questionId);
             newWrongBook.splice(idx, 1);
           }
@@ -33,14 +49,16 @@ const useStore = create(
         });
       },
 
-      // Remove a question from wrong book (user has mastered it)
+      // ─── Remove from wrong book ──────────────────────────
+
       removeFromWrongBook: (questionId) => {
         set(state => ({
           wrongBook: state.wrongBook.filter(id => id !== questionId),
         }));
       },
 
-      // Clear all answers for a session
+      // ─── Clear all answers for a session ─────────────────
+
       clearSession: (sessionId) => {
         set(state => {
           const newAnswers = { ...state.answers };
@@ -49,13 +67,15 @@ const useStore = create(
         });
       },
 
-      // Get answer for a specific question, returns selected label or null
+      // ─── Get answer for a specific question ──────────────
+
       getAnswer: (sessionId, questionNumber) => {
         const state = get();
         return state.answers[sessionId]?.[questionNumber] ?? null;
       },
 
-      // Get session stats
+      // ─── Get session stats ───────────────────────────────
+
       getSessionStats: (sessionId, questions) => {
         const state = get();
         const sessionAnswers = state.answers[sessionId] || {};
@@ -76,12 +96,14 @@ const useStore = create(
         };
       },
 
-      // Reset all data
+      // ─── Reset all data ──────────────────────────────────
+
       resetAll: () => {
         set({ answers: {}, wrongBook: [] });
       },
 
-      // Import data from backup (merges with existing)
+      // ─── Import data from backup file ────────────────────
+
       importData: (answers, wrongBook) => {
         set(state => ({
           answers: { ...state.answers, ...answers },
@@ -89,7 +111,8 @@ const useStore = create(
         }));
       },
 
-      // Export all data for backup
+      // ─── Export data for backup file ─────────────────────
+
       exportData: () => {
         const state = get();
         return {
@@ -101,9 +124,39 @@ const useStore = create(
     }),
     {
       name: 'n2-listening-store',
-      version: 1,
+      version: 2, // bumped to trigger clean migration
+      onRehydrateStorage: () => {
+        // Return callback that fires after hydration
+        return (state) => {
+          if (state && recoveredFrom) {
+            // Show a one-time notification in console
+            console.log(`🛟 答题数据已从「${recoveredFrom}」自动恢复`);
+            // Reset after showing
+            recoveredFrom = null;
+          }
+          // Write initial backup after hydration
+          writeBackup();
+        };
+      },
     }
   )
 );
+
+// ─── Auto-backup on every state change ─────────────────────
+// Debounce writes: at most once per 2 seconds
+
+let backupTimer = null;
+useStore.subscribe(() => {
+  if (backupTimer) clearTimeout(backupTimer);
+  backupTimer = setTimeout(() => {
+    writeBackup();
+  }, 2000);
+});
+
+// ─── Recovery status getter ─────────────────────────────────
+
+export function wasDataRecovered() {
+  return recoveredFrom;
+}
 
 export default useStore;
