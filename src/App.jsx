@@ -1,5 +1,7 @@
+import { useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth, signOut } from './lib/auth';
+import useStore from './store/useStore';
 import HomePage from './pages/HomePage';
 import QuizPage from './pages/QuizPage';
 import ReviewPage from './pages/ReviewPage';
@@ -20,8 +22,17 @@ function LoadingScreen() {
 
 export default function App() {
   const { user, loading } = useAuth();
+  const loadUserData = useStore(s => s.loadUserData);
+  const loaded = useStore(s => s.loaded);
 
-  if (loading) return <LoadingScreen />;
+  // Load user's answer records whenever auth state is confirmed
+  useEffect(() => {
+    if (user) {
+      loadUserData();
+    }
+  }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (loading || (user && !loaded)) return <LoadingScreen />;
 
   // Not logged in
   if (!user) {

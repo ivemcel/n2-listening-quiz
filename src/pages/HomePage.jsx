@@ -4,7 +4,6 @@ import useStore from '../store/useStore';
 import questionsData from '../../data/questions.json';
 
 export default function HomePage() {
-  const loadUserData = useStore(s => s.loadUserData);
   const loaded = useStore(s => s.loaded);
   const getSessionStats = useStore(s => s.getSessionStats);
   const resetAll = useStore(s => s.resetAll);
@@ -21,9 +20,7 @@ export default function HomePage() {
     } catch (e) {
       setLoadError('题目数据加载失败，请先运行: node scripts/parse.js');
     }
-    // Load user's answer records from PocketBase
-    loadUserData();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleExport = () => {
     try {
