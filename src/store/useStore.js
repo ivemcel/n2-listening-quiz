@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { pb, getQuestionPbId, getSessionPbId } from '../lib/pocketbase';
+import { pb, getQuestionPbId, getQuestionCode, getSessionPbId } from '../lib/pocketbase';
 
 const useStore = create((set, get) => ({
   // ─── Client state ─────────────────────────────────────────
@@ -18,33 +18,36 @@ const useStore = create((set, get) => ({
     }
 
     try {
+      // Fetch answer records (no expand - PB expand is unreliable)
       const records = await pb.collection('answer_records').getFullList({
-        expand: 'question',
         requestKey: null,
       });
 
+      // Build reverse lookup: PB question ID → code
       const answers = {};
       for (const r of records) {
-        const qCode = r.expand?.question?.code;
+        const qCode = await getQuestionCode(r.question);
         if (!qCode) {
-          console.warn('Answer record missing question code:', r.id);
+          console.warn('Unknown question PB ID:', r.question, 'record:', r.id);
           continue;
         }
         const parts = qCode.split('-');
-        const sessionCode = parts[0]; // "201607" from "201607-1"
+        const sessionCode = parts[0];
         const qNum = parseInt(parts[parts.length - 1], 10);
         if (!answers[sessionCode]) answers[sessionCode] = {};
         answers[sessionCode][qNum] = r.selected_label;
       }
 
+      // Fetch wrong book (also no expand)
       const wrongRecords = await pb.collection('wrong_book').getFullList({
-        expand: 'question',
         requestKey: null,
       });
 
-      const wrongBook = wrongRecords
-        .map(r => r.expand?.question?.code)
-        .filter(Boolean);
+      const wrongBook = [];
+      for (const r of wrongRecords) {
+        const qCode = await getQuestionCode(r.question);
+        if (qCode) wrongBook.push(qCode);
+      }
 
       console.log(`📥 加载完成: ${records.length}条答题, ${wrongBook.length}道错题, ${Object.keys(answers).length}个场次`);
       set({ answers, wrongBook, loaded: true, loadError: null });

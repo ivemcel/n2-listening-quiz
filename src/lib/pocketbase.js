@@ -35,6 +35,15 @@ export async function getQuestionPbId(code) {
   return map.get(code) || null;
 }
 
+/** Get question code from PB record ID (reverse lookup) */
+export async function getQuestionCode(pbId) {
+  const map = await getQuestionIdMap();
+  for (const [code, id] of map.entries()) {
+    if (id === pbId) return code;
+  }
+  return null;
+}
+
 // ─── Session ID mapping ───────────────────────────────────
 
 let codeToSessionIdMap = null;
