@@ -64,7 +64,16 @@ export default function YearSelector({ sessions, getSessionStats }) {
                         </div>
                       )}
                       {stats.completed && (
-                        <div className="text-green-600 text-xs">✅ 已完成</div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-green-600 text-xs">✅ 已完成</span>
+                          <Link
+                            to={`/quiz/${entry.id}?redo=1`}
+                            className="text-xs text-primary-600 hover:text-primary-800 hover:underline"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            🔄 重做
+                          </Link>
+                        </div>
                       )}
                     </div>
                   </Link>

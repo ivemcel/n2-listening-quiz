@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useSearchParams, Link } from 'react-router-dom';
 import AudioPlayer from '../components/AudioPlayer';
 import QuestionCard from '../components/QuestionCard';
 import OptionList from '../components/OptionList';
@@ -11,15 +11,17 @@ import { getSessionAudioSrc, toSessionRelativeTimestamp } from '../utils/session
 
 export default function QuizPage() {
   const { sessionId } = useParams();
-  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const recordAnswer = useStore(s => s.recordAnswer);
   const getAnswer = useStore(s => s.getAnswer);
   const getSessionStats = useStore(s => s.getSessionStats);
+  const clearSession = useStore(s => s.clearSession);
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedLabel, setSelectedLabel] = useState(null);
   const [showResult, setShowResult] = useState(false);
   const [sessionDone, setSessionDone] = useState(false);
+  const [showRestartDialog, setShowRestartDialog] = useState(false);
 
   const session = questionsData[sessionId];
   const questions = session?.questions || [];
@@ -30,6 +32,34 @@ export default function QuizPage() {
     setCurrentIndex(0);
     setSessionDone(false);
   }, [sessionId]);
+
+  // Check if session was completed and handle redo/restart
+  useEffect(() => {
+    if (!session) return;
+    const stats = getSessionStats(sessionId, questions);
+    const isRedo = searchParams.get('redo') === '1';
+    if (isRedo) {
+      // Direct redo from home page: clear and start fresh
+      clearSession(sessionId);
+      setSearchParams({}, { replace: true });
+    } else if (stats.completed) {
+      // Completed session: ask user whether to redo or review
+      setShowRestartDialog(true);
+    }
+  }, [sessionId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleRestartSession = useCallback(() => {
+    clearSession(sessionId);
+    setShowRestartDialog(false);
+    setCurrentIndex(0);
+    setSelectedLabel(null);
+    setShowResult(false);
+    setSessionDone(false);
+  }, [sessionId, clearSession]);
+
+  const handleContinueReview = useCallback(() => {
+    setShowRestartDialog(false);
+  }, []);
 
   // Restore previous answer state for current question
   const prevAnswer = getAnswer(sessionId, questions[currentIndex]?.number);
@@ -81,6 +111,54 @@ export default function QuizPage() {
     );
   }
 
+  // Restart dialog — shown when entering a completed session
+  if (showRestartDialog) {
+    const stats = getSessionStats(sessionId, questions);
+    return (
+      <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+        <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 space-y-4 text-center">
+          <div className="text-5xl">📋</div>
+          <h2 className="text-xl font-bold text-gray-800">
+            {session.year}.{session.month} 已完成
+          </h2>
+          <div className="flex justify-center gap-6 text-sm">
+            <div>
+              <span className="text-green-600 font-bold">{stats.correct}</span>
+              <span className="text-gray-400"> / {stats.total} 正确</span>
+            </div>
+            <div>
+              <span className="text-primary-600 font-bold">{stats.accuracy}%</span>
+              <span className="text-gray-400"> 正确率</span>
+            </div>
+          </div>
+          <div className="space-y-2 pt-2">
+            <button
+              onClick={handleRestartSession}
+              className="w-full py-3 rounded-xl font-bold text-white bg-primary-600 hover:bg-primary-700 transition-colors"
+            >
+              🔄 清空重做
+            </button>
+            <button
+              onClick={handleContinueReview}
+              className="w-full py-3 rounded-xl font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors"
+            >
+              👁 继续查看
+            </button>
+          </div>
+          <p className="text-xs text-gray-400">
+            清空重做将清除本场所有答题记录，重新开始
+          </p>
+          <Link
+            to="/"
+            className="block text-xs text-gray-400 hover:text-gray-600 underline"
+          >
+            返回首页
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   // Session complete screen
   if (sessionDone) {
     const stats = getSessionStats(sessionId, questions);
@@ -109,6 +187,7 @@ export default function QuizPage() {
         <div className="flex justify-center gap-3">
           <button
             onClick={() => {
+              clearSession(sessionId);
               setCurrentIndex(0);
               setSessionDone(false);
               setSelectedLabel(null);
