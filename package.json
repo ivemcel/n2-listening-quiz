@@ -8,9 +8,12 @@
     "build": "vite build",
     "preview": "vite preview",
     "parse": "node scripts/parse.js",
-    "export-audio": "node scripts/export-wrong-audio.mjs"
+    "export-audio": "node scripts/export-wrong-audio.mjs",
+    "db:setup": "node scripts/pb-setup.mjs",
+    "db:start": "./pocketbase/pocketbase serve --http=127.0.0.1:8090 --dir=./pocketbase/pb_data"
   },
   "dependencies": {
+    "pocketbase": "^0.27.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.26.0",

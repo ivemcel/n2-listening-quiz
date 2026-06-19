@@ -1,44 +1,70 @@
-import { useState } from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
+import { useAuth, signOut } from './lib/auth';
 import HomePage from './pages/HomePage';
 import QuizPage from './pages/QuizPage';
 import ReviewPage from './pages/ReviewPage';
 import ExportPage from './pages/ExportPage';
+import AuthPage from './pages/AuthPage';
 import NavBar from './components/NavBar';
-import { wasDataRecovered } from './store/useStore';
+
+function LoadingScreen() {
+  return (
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="text-center text-gray-400">
+        <div className="text-4xl mb-2 animate-pulse">🎧</div>
+        <p>加载中…</p>
+      </div>
+    </div>
+  );
+}
 
 export default function App() {
-  const [dismissRecovery, setDismissRecovery] = useState(false);
-  const recoveredFrom = wasDataRecovered();
+  const { user, loading } = useAuth();
+
+  if (loading) return <LoadingScreen />;
+
+  // Not logged in
+  if (!user) {
+    return (
+      <div className="max-w-4xl mx-auto px-4 pt-6">
+        <header className="text-center mb-8">
+          <h1 className="text-3xl font-bold text-primary-700">
+            🎧 N2听力即时问答
+          </h1>
+          <p className="text-gray-500 mt-1">历年真题 · 即时答题 · 错题收藏</p>
+        </header>
+        <Routes>
+          <Route path="*" element={<AuthPage />} />
+        </Routes>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-4xl mx-auto px-4 pb-24 pt-6">
-      {/* Data recovery notification */}
-      {recoveredFrom && !dismissRecovery && (
-        <div className="mb-4 bg-amber-50 border border-amber-300 rounded-xl px-4 py-3 flex items-center justify-between">
-          <p className="text-sm text-amber-800">
-            🛟 检测到数据异常，已从 <span className="font-bold">{recoveredFrom}</span> 自动恢复答题记录。
-          </p>
-          <button
-            onClick={() => setDismissRecovery(true)}
-            className="text-amber-500 hover:text-amber-700 ml-3 shrink-0"
-          >
-            ✕
-          </button>
-        </div>
-      )}
-
-      <header className="text-center mb-8">
+      <header className="text-center mb-8 relative">
         <h1 className="text-3xl font-bold text-primary-700">
           🎧 N2听力即时问答
         </h1>
         <p className="text-gray-500 mt-1">历年真题 · 即时答题 · 错题收藏</p>
+        <div className="absolute top-0 right-0 flex items-center gap-3">
+          <span className="text-xs text-gray-400 truncate max-w-[160px]">
+            {user.email}
+          </span>
+          <button
+            onClick={() => signOut()}
+            className="text-xs text-gray-400 hover:text-red-500 transition-colors"
+          >
+            退出
+          </button>
+        </div>
       </header>
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/quiz/:sessionId" element={<QuizPage />} />
         <Route path="/review" element={<ReviewPage />} />
         <Route path="/export" element={<ExportPage />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       <NavBar />
     </div>

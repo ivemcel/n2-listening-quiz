@@ -11,3 +11,8 @@ data/sessions/
 data/错题合集.mp3
 data/错题导出记录.txt
 data/exports/
+pocketbase/pb_data/
+pocketbase/pocketbase
+pocketbase/pb_migrations/
+pocketbase/CHANGELOG.md
+pocketbase/LICENSE.md
